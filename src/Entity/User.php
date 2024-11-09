@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -32,6 +34,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\Column]
     private ?string $password = null;
+
+    /**
+     * @var Collection<int, Portfolio>
+     */
+    #[ORM\OneToMany(targetEntity: Portfolio::class, mappedBy: 'user')]
+    private Collection $portfolios;
+
+    public function __construct()
+    {
+        $this->portfolios = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -107,4 +120,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
     }
+
+    /**
+     * @return Collection<int, Portfolio>
+     */
+    public function getPortfolios(): Collection
+    {
+        return $this->portfolios;
+    }
+
+    public function addPortfolio(Portfolio $portfolio): static
+    {
+        if (!$this->portfolios->contains($portfolio)) {
+            $this->portfolios->add($portfolio);
+            $portfolio->setUserId($this);
+        }
+
+        return $this;
+    }
+
+    // public function removePortfolio(Portfolio $portfolio): static
+    // {
+    //     if ($this->portfolios->removeElement($portfolio)) {
+    //         // set the owning side to null (unless already changed)
+    //         if ($portfolio->getUserId() === $this) {
+    //             $portfolio->setUserId(null);
+    //         }
+    //     }
+
+    //     return $this;
+    // }
 }
