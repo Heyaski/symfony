@@ -41,6 +41,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: Portfolio::class, mappedBy: 'user')]
     private Collection $portfolios;
 
+    #[ORM\ManyToOne(inversedBy: 'user')]
+    private ?Application $application = null;
+
     public function __construct()
     {
         $this->portfolios = new ArrayCollection();
@@ -150,4 +153,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     //     return $this;
     // }
+
+    public function getApplication(): ?Application
+    {
+        return $this->application;
+    }
+
+    public function setApplication(?Application $application): static
+    {
+        $this->application = $application;
+
+        return $this;
+    }
 }
