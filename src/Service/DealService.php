@@ -40,47 +40,82 @@ class DealService
 
 	public function executeDeal(Application $firstApplication, Application $secondApplication): void
 	{
-		// Определяем, кто покупатель, а кто продавец по действию в заявке
+		// Определяем, кто покупатель, а кто продавец
 		$buyApplication = $firstApplication->getAction() === ActionEnum::BUY ? $firstApplication : $secondApplication;
 		$sellApplication = $firstApplication->getAction() === ActionEnum::SELL ? $firstApplication : $secondApplication;
+
+		// Определяем какая заявка является оригинальной (из базы данных)
+		$originalApplication = $this->entityManager->find(Application::class, $secondApplication->getId());
+		if (!$originalApplication) {
+			throw new \Exception("Original application not found");
+		}
 
 		$buyer = $buyApplication->getUser();
 		$seller = $sellApplication->getUser();
 
-		$buyerPortfolio = $buyer->getPortfolios()->first();
-		$sellerPortfolio = $seller->getPortfolios()->first();
+		// Получаем портфели для покупателя и продавца
+		$buyerPortfolio = $buyApplication->getPortfolio() ?? $buyer->getPortfolios()->first();
+		$sellerPortfolio = $sellApplication->getPortfolio() ?? $seller->getPortfolios()->first();
 
 		if (!$buyerPortfolio || !$sellerPortfolio) {
 			throw new \Exception("User portfolios not found");
 		}
 
-		// достаточно ли средств у покупателя
-		if ($buyerPortfolio->getBalance() < $buyApplication->getTotal()) {
-			throw new \Exception("Insufficient funds: required {$buyApplication->getTotal()}, available {$buyerPortfolio->getBalance()}");
+		// Устанавливаем портфели для заявок, если они не установлены
+		if (!$buyApplication->getPortfolio()) {
+			$buyApplication->setPortfolio($buyerPortfolio);
+		}
+		if (!$sellApplication->getPortfolio()) {
+			$sellApplication->setPortfolio($sellerPortfolio);
 		}
 
-		// достаточно ли акций у продавца
+		// Вычисляем количество и сумму для текущей сделки
+		$tradeQuantity = min($buyApplication->getQuantity(), $sellApplication->getQuantity());
+		$tradeAmount = $tradeQuantity * $originalApplication->getPrice();
+
+		// Проверяем наличие средств и акций с учетом частичного исполнения
+		if ($buyerPortfolio->getBalance() < $tradeAmount) {
+			throw new \Exception("Insufficient funds");
+		}
+
 		$sellerStock = null;
 		foreach ($sellerPortfolio->getDepositaries() as $depositary) {
 			if ($depositary->getStock() === $sellApplication->getStock()) {
-				if ($depositary->getQuantity() < $sellApplication->getQuantity()) {
-					throw new \Exception("Insufficient stocks: required {$sellApplication->getQuantity()}, available {$depositary->getQuantity()}");
+				if ($depositary->getQuantity() < $tradeQuantity) {
+					throw new \Exception("Insufficient stocks");
 				}
 				$sellerStock = $depositary;
 				break;
 			}
 		}
-		if (!$sellerStock && $sellApplication->getQuantity() > 0) {
-			throw new \Exception("Seller doesn't have any stocks");
+
+		$this->entityManager->beginTransaction();
+		try {
+			// Переводим деньги за фактическое количество
+			$buyerPortfolio->subBalance($tradeAmount);
+			$sellerPortfolio->addBalance($tradeAmount);
+
+			// Передаем акции в фактическом количестве
+			$buyerPortfolio->addStock($buyApplication->getStock(), $tradeQuantity);
+			$sellerPortfolio->removeStock($sellApplication->getStock(), $tradeQuantity);
+
+			$this->entityManager->persist($buyerPortfolio);
+			$this->entityManager->persist($sellerPortfolio);
+
+			// Обновляем количество в оригинальной заявке
+			$remainingQuantity = $originalApplication->getQuantity() - $tradeQuantity;
+			if ($remainingQuantity > 0) {
+				$originalApplication->setQuantity($remainingQuantity);
+				$this->entityManager->persist($originalApplication);
+			} else {
+				$this->entityManager->remove($originalApplication);
+			}
+
+			$this->entityManager->flush();
+			$this->entityManager->commit();
+		} catch (\Exception $e) {
+			$this->entityManager->rollback();
+			throw $e;
 		}
-
-		$buyerPortfolio->subBalance($buyApplication->getTotal());
-		$buyerPortfolio->addStock($buyApplication->getStock(), $buyApplication->getQuantity());
-
-		$sellerPortfolio->addBalance($sellApplication->getTotal());
-		$sellerPortfolio->removeStock($sellApplication->getStock(), $sellApplication->getQuantity());
-		$this->entityManager->remove($buyApplication);
-		$this->entityManager->remove($sellApplication);
-		$this->entityManager->flush();
 	}
 }

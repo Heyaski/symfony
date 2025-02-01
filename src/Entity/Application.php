@@ -22,6 +22,10 @@ class Application
     #[ORM\JoinColumn(nullable: false)]
     private ?Stock $stock = null;
 
+    #[ORM\ManyToOne(inversedBy: 'applications')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Portfolio $portfolio = null;
+
     #[ORM\Column]
     private ?int $quantity = null;
 
@@ -57,6 +61,17 @@ class Application
     {
         $this->stock = $stock;
 
+        return $this;
+    }
+
+    public function getPortfolio(): ?Portfolio
+    {
+        return $this->portfolio;
+    }
+
+    public function setPortfolio(?Portfolio $portfolio): self
+    {
+        $this->portfolio = $portfolio;
         return $this;
     }
 

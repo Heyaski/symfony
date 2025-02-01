@@ -6,6 +6,7 @@ use App\Repository\PortfolioRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use App\Enums\ActionEnum;
 
 #[ORM\Entity(repositoryClass: PortfolioRepository::class)]
 class Portfolio
@@ -28,9 +29,16 @@ class Portfolio
     #[ORM\OneToMany(targetEntity: Depositary::class, mappedBy: 'portfolio', cascade: ['persist', 'remove'])]
     private Collection $depositaries;
 
+    /**
+     * @var Collection<int, Application>
+     */
+    #[ORM\OneToMany(targetEntity: Application::class, mappedBy: 'portfolio', cascade: ['persist', 'remove'])]
+    private Collection $applications;
+
     public function __construct()
     {
         $this->depositaries = new ArrayCollection();
+        $this->applications = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -126,15 +134,54 @@ class Portfolio
         }
     }
 
-    // public function removeDepositary(Depositary $depositary): static
-    // {
-    //     if ($this->depositaries->removeElement($depositary)) {
-    //         // set the owning side to null (unless already changed)
-    //         if ($depositary->getPortfolio() === $this) {
-    //             $depositary->setPortfolio(null);
-    //         }
-    //     }
+    public function getFrozenStockQuantity(Stock $stock): int
+    {
+        $frozenQuantity = 0;
+        foreach ($this->applications as $application) {
+            if ($application->getStock() === $stock && $application->getAction() === ActionEnum::SELL) {
+                $frozenQuantity += $application->getQuantity();
+            }
+        }
+        return $frozenQuantity;
+    }
 
-    //     return $this;
-    // }
+    public function getAvailableStockQuantity(Stock $stock): int
+    {
+        $totalQuantity = 0;
+        foreach ($this->depositaries as $depositary) {
+            if ($depositary->getStock() === $stock) {
+                $totalQuantity = $depositary->getQuantity();
+                break;
+            }
+        }
+        return $totalQuantity - $this->getFrozenStockQuantity($stock);
+    }
+
+    /**
+     * @return Collection<int, Application>
+     */
+    public function getApplications(): Collection
+    {
+        return $this->applications;
+    }
+
+    public function addApplication(Application $application): static
+    {
+        if (!$this->applications->contains($application)) {
+            $this->applications->add($application);
+            $application->setPortfolio($this);
+        }
+        return $this;
+    }
+
+    public function removeApplication(Application $application): static
+    {
+        if ($this->applications->removeElement($application)) {
+            // set the owning side to null (unless already changed)
+            if ($application->getPortfolio() === $this) {
+                $application->setPortfolio(null);
+            }
+        }
+        return $this;
+    }
 }

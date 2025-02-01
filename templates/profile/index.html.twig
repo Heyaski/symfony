@@ -20,18 +20,35 @@
     {% set totalBalance = 0 %}
     {% for portfolio in user.portfolios %}
         <div class="portfolio">
-            <span class="portfolio-id">Портфель ID: {{ portfolio.id }}</span>
-            <span class="portfolio-balance">Баланс: {{ portfolio.balance }}</span>
+            <div class="portfolio-header">
+                <span class="portfolio-id">Портфель ID: {{ portfolio.id }}</span>
+                {% if portfolio.depositaries|length == 0 %}
+                    <form method="post" action="{{ path('delete_portfolio') }}" class="delete-portfolio-form" onsubmit="return confirm('Вы уверены, что хотите удалить этот портфель?');">
+                        <input type="hidden" name="portfolio_id" value="{{ portfolio.id }}">
+                        <button type="submit" class="delete-portfolio-button">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            <span class="portfolio-balance">Баланс: {{ portfolio.balance }} ₽</span>
             <span class="portfolio-stocks">Ценные бумаги:</span>
             <ul class="stocks-list">
                 {% for depositary in portfolio.depositaries %}
-                    <li>{{ depositary.stock.name }}, {{ depositary.quantity }} шт.</li>
+                    <li>
+                        {{ depositary.stock.name }}, 
+                        {{ depositary.quantity }} шт. 
+                        {% set frozen = portfolio.getFrozenStockQuantity(depositary.stock) %}
+                        {% if frozen > 0 %}
+                            <span class="frozen-stocks">({{ frozen }} шт. заморожено)</span>
+                        {% endif %}
+                    </li>
                 {% endfor %}
             </ul>
             {% set totalBalance = totalBalance + portfolio.balance %}
         </div>
     {% endfor %}
-    <h2 class="profile-total">Итоговый баланс всех портфелей: {{ totalBalance }}</h2>
+    <h2 class="profile-total">Итоговый баланс всех портфелей: {{ totalBalance }} ₽</h2>
     
     {% if user.portfolios|length < 5 %}
         <form method="post" action="{{ path('create_portfolio') }}" class="create-portfolio-form">
@@ -40,16 +57,6 @@
     {% else %}
         <p class="error-message">Вы не можете создать больше 5 портфелей.</p>
     {% endif %}
-    
-    <form method="post" action="{{ path('delete_portfolio') }}" class="delete-portfolio-form">
-        <label for="portfolio-select">Выберите портфель для удаления:</label>
-        <select id="portfolio-select" name="portfolio_id" class="portfolio-select">
-            {% for portfolio in user.portfolios %}
-                <option value="{{ portfolio.id }}">Портфель ID: {{ portfolio.id }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit" class="delete-portfolio-button">Удалить портфель</button>
-    </form>
     
     {% if is_granted('ROLE_SUPER_ADMIN') %}
         <form method="post" action="{{ path('grant_admin_role') }}" class="grant-role-form">
@@ -81,6 +88,9 @@
                             <p><strong>Цена:</strong> {{ application.price }} ₽</p>
                             <p><strong>Общая сумма:</strong> {{ application.total }} ₽</p>
                         </div>
+                        <button onclick="deleteApplication('{{ application.stock.id }}', '{{ application.id }}')" class="delete-button">
+                            <i class="fas fa-trash"></i> Удалить
+                        </button>
                     </div>
                 {% else %}
                     <p class="no-applications">У вас пока нет активных заявок</p>
@@ -140,23 +150,6 @@
                     <label for="price">Цена:</label>
                     <input type="number" id="price" name="price" required value="0">
                     <button type="submit">Редактировать заявку</button>
-                </form>
-            </div>
-
-            <div class="form-card">
-                <h3>Удалить заявку</h3>
-                <form id="deleteForm" onsubmit="deleteApplication(event)" class="application-form">
-                    <input type="hidden" name="user_id" value="{{ user.id }}">
-                    <label for="application-delete-select">Выберите заявку:</label>
-                    <select id="application-delete-select" name="application_id" onchange="deleteFormAction(this.value)">
-                        {% for application in user.applications %}
-                            <option value="{{ application.id }}" 
-                                    data-stock="{{ application.stock.id }}">
-                                Заявка ID: {{ application.id }} ({{ application.stock.name }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit">Удалить заявку</button>
                 </form>
             </div>
         </div>
@@ -259,7 +252,7 @@
     .no-applications {
         grid-column: 1 / -1;
         text-align: center;
-        color: #666;
+        color: #ccc;
         padding: 2rem;
     }
 
@@ -280,6 +273,64 @@
         background-color: #e8f5e9;
         color: #2e7d32;
         border: 1px solid #66bb6a;
+    }
+
+    .delete-button {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        margin-top: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .delete-button:hover {
+        background-color: #c0392b;
+    }
+
+    .fa-trash {
+        font-size: 0.9em;
+    }
+
+    .portfolio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .delete-portfolio-button {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .delete-portfolio-button:hover {
+        background-color: #c0392b;
+    }
+
+    .delete-portfolio-form {
+        margin: 0;
+    }
+
+    .frozen-stocks {
+        color:rgb(203, 202, 202);
+        font-size: 0.9em;
+        font-style: italic;
     }
     </style>
 
@@ -328,10 +379,14 @@
         }
     }
 
-    async function deleteApplication(event) {
-        event.preventDefault();
-        const form = event.target;
-        const url = form.getAttribute('action');
+    async function deleteApplication(stockId, applicationId) {
+        if (!confirm('Вы уверены, что хотите удалить эту заявку?')) {
+            return;
+        }
+        
+        const url = "{{ path('app_stock_glass_delete_application', {'stockId': 'STOCK_ID', 'applicationId': 'APP_ID'}) }}"
+            .replace('STOCK_ID', stockId)
+            .replace('APP_ID', applicationId);
         
         try {
             const response = await fetch(url, {
@@ -339,9 +394,13 @@
             });
             if (response.ok) {
                 window.location.reload();
+            } else {
+                const error = await response.text();
+                alert('Ошибка при удалении заявки: ' + error);
             }
         } catch (error) {
             console.error('Error:', error);
+            alert('Ошибка при удалении заявки');
         }
     }
 

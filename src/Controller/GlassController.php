@@ -35,10 +35,23 @@ class GlassController extends AbstractController
         if ($stock === null) {
             throw $this->createNotFoundException("Stock not found");
         }
+
+        // Подготавливаем данные для шаблона
+        $applications = array_map(function ($app) {
+            return [
+                'id' => $app->getId(),
+                'quantity' => $app->getQuantity(),
+                'price' => $app->getPrice(),
+                'stockId' => $app->getStock()->getId(),
+                'action' => $app->getAction()->value
+            ];
+        }, $stock->getApplications()->toArray());
+
         return $this->render('glass/stock_glass_index.html.twig', [
             'stock' => $stock,
             'BUY' => ActionEnum::BUY,
             'SELL' => ActionEnum::SELL,
+            'applications' => $applications
         ]);
     }
 
@@ -104,25 +117,13 @@ class GlassController extends AbstractController
                 return $this->redirectToRoute('app_profile');
             }
         } elseif ($action === ActionEnum::SELL) {
-            $hasEnoughStocks = false;
-            foreach ($portfolio->getDepositaries() as $depositary) {
-                if ($depositary->getStock() === $stock && $depositary->getQuantity() >= $quantity) {
-                    $hasEnoughStocks = true;
-                    break;
-                }
-            }
-            if (!$hasEnoughStocks) {
-                $available = 0;
-                foreach ($portfolio->getDepositaries() as $depositary) {
-                    if ($depositary->getStock() === $stock) {
-                        $available = $depositary->getQuantity();
-                        break;
-                    }
-                }
+            $availableQuantity = $portfolio->getAvailableStockQuantity($stock);
+            if ($quantity > $availableQuantity) {
                 $this->addFlash('error', sprintf(
-                    'Недостаточно акций для продажи. Требуется: %d шт., доступно: %d шт.',
+                    'Недостаточно доступных акций для продажи. Требуется: %d шт., доступно: %d шт. (%d шт. заморожено в других заявках)',
                     $quantity,
-                    $available
+                    $availableQuantity,
+                    $portfolio->getFrozenStockQuantity($stock)
                 ));
                 return $this->redirectToRoute('app_profile');
             }
@@ -134,6 +135,7 @@ class GlassController extends AbstractController
         $application->setAction($action);
         $application->setPrice($price);
         $application->setUser($user);
+        $application->setPortfolio($portfolio); // Добавляем установку портфеля
 
         try {
             $appropriateApplication = $this->dealService->findAppropriateApplication($application);
@@ -217,6 +219,73 @@ class GlassController extends AbstractController
         try {
             $this->applicationRepository->remove($application, true);
             return $this->redirectToRoute('app_profile');
+        } catch (\Exception $e) {
+            return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/api/trade', name: 'app_execute_trade', methods: ['POST'])]
+    public function executeTrade(Request $request): Response
+    {
+        $applicationId = $request->request->get('applicationId');
+        $quantity = (int) $request->request->get('quantity');
+        $tradeType = $request->request->get('tradeType');
+        $portfolioId = $request->request->get('portfolioId'); // Добавляем получение ID портфеля
+
+        $application = $this->applicationRepository->find($applicationId);
+        if (!$application) {
+            return new Response('Заявка не найдена', Response::HTTP_NOT_FOUND);
+        }
+
+        // Проверяем, что пользователь не пытается торговать с самим собой
+        if ($application->getUser() === $this->getUser()) {
+            return new Response('Нельзя торговать с собственными заявками', Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $user = $this->getUser();
+            // Находим нужный портфель по ID
+            $portfolio = null;
+            foreach ($user->getPortfolios() as $p) {
+                if ($p->getId() == $portfolioId) {
+                    $portfolio = $p;
+                    break;
+                }
+            }
+
+            if (!$portfolio) {
+                return new Response('Портфель не найден', Response::HTTP_BAD_REQUEST);
+            }
+
+            if ($tradeType === 'buy') {
+                $totalCost = $quantity * $application->getPrice(); // Используем только запрошенное количество
+                if ($portfolio->getBalance() < $totalCost) {
+                    return new Response('Недостаточно средств для покупки', Response::HTTP_BAD_REQUEST);
+                }
+            } else {
+                $availableQuantity = $portfolio->getAvailableStockQuantity($application->getStock());
+                if ($quantity > $availableQuantity) {
+                    return new Response(sprintf(
+                        'Недостаточно доступных акций для продажи. Доступно: %d шт. (%d шт. заморожено в других заявках)',
+                        $availableQuantity,
+                        $portfolio->getFrozenStockQuantity($application->getStock())
+                    ), Response::HTTP_BAD_REQUEST);
+                }
+            }
+
+            // Создаем новую заявку для частичного исполнения
+            $newApplication = new Application();
+            $newApplication->setStock($application->getStock());
+            $newApplication->setQuantity($quantity); // Используем только запрошенное количество
+            $newApplication->setPrice($application->getPrice());
+            $newApplication->setAction($tradeType === 'buy' ? ActionEnum::BUY : ActionEnum::SELL);
+            $newApplication->setUser($user);
+            $newApplication->setPortfolio($portfolio); // Устанавливаем портфель для заявки
+
+            // Выполняем сделку
+            $this->dealService->executeDeal($newApplication, $application);
+
+            return new Response('Сделка успешно выполнена', Response::HTTP_OK);
         } catch (\Exception $e) {
             return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
