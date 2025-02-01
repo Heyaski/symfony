@@ -361,60 +361,22 @@
     }
 
     function updateCreateFormAction(stockId) {
-        if (!stockId) return;
+        if (!stockId) {
+            console.error('Stock ID is missing');
+            return;
+        }
         const form = document.getElementById('createForm');
-        form.action = "{{ path('app_stock_glass_create_application', {'stockId': 'STOCK_ID'}) }}"
+        if (!form) {
+            console.error('Create form not found');
+            return;
+        }
+        
+        // Создаем URL используя значение stockId
+        const url = "{{ path('app_stock_glass_create_application', {'stockId': 'STOCK_ID'}) }}"
             .replace('STOCK_ID', stockId);
-    }
-
-    async function createApplication(event) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        const action = formData.get('action');
-        const quantity = parseInt(formData.get('quantity'));
-        const price = parseFloat(formData.get('price'));
-        const portfolioId = formData.get('portfolio_id');
         
-        // Находим выбранный портфель
-        const portfolio = {{ user.portfolios|json_encode|raw }}.find(p => p.id == portfolioId);
-        
-        // Проверяем средства для покупки
-        if (action === 'buy') {
-            const totalCost = quantity * price;
-            if (portfolio.balance < totalCost) {
-                alert(`Недостаточно средств. Требуется: ${totalCost}, доступно: ${portfolio.balance}`);
-                return;
-            }
-        }
-        
-        // Проверяем наличие акций для продажи
-        if (action === 'sell') {
-            const stockId = document.getElementById('stock-select').value;
-            const depositary = portfolio.depositaries.find(d => d.stock.id == stockId);
-            if (!depositary || depositary.quantity < quantity) {
-                const available = depositary ? depositary.quantity : 0;
-                alert(`Недостаточно акций. Требуется: ${quantity}, доступно: ${available}`);
-                return;
-            }
-        }
-        
-        const url = form.getAttribute('action');
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData
-            });
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                const error = await response.text();
-                alert(error);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert(error.message);
-        }
+        form.action = url;
+        console.log('Form action updated:', url);
     }
 
     // Обновляем инициализацию при загрузке страницы
@@ -423,10 +385,38 @@
         const updateSelect = document.getElementById('application-select');
         const deleteSelect = document.getElementById('application-delete-select');
         
-        if(stockSelect.value) updateCreateFormAction(stockSelect.value);
+        if(stockSelect && stockSelect.value) {
+            updateCreateFormAction(stockSelect.value);
+            console.log('Initial stock ID:', stockSelect.value);
+        }
         if(updateSelect.value) updateFormFields(updateSelect.value);
         if(deleteSelect.value) deleteFormAction(deleteSelect.value);
     }
+
+    // Вызываем функцию сразу после загрузки DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        const stockSelect = document.getElementById('stock-select');
+        if (stockSelect && stockSelect.value) {
+            updateCreateFormAction(stockSelect.value);
+            console.log('Initial stock ID:', stockSelect.value);
+        }
+    });
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        const stockSelect = document.getElementById('stock-select');
+        if (stockSelect && stockSelect.options.length > 0) {
+            // Используем value первой опции
+            const initialStockId = stockSelect.options[0].value;
+            updateCreateFormAction(initialStockId);
+            console.log('Initial stock ID:', initialStockId);
+        }
+    });
+
+    // Обработчик изменения выбранной акции
+    document.getElementById('stock-select').addEventListener('change', function(e) {
+        updateCreateFormAction(e.target.value);
+    });
     </script>
 </div>
 {% endblock %}

@@ -15,6 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Psr\Log\LoggerInterface;
 
 class GlassController extends AbstractController
 {
@@ -23,8 +24,8 @@ class GlassController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly ApplicationRepository $applicationRepository,
         private readonly DealService $dealService,
+        private readonly LoggerInterface $logger,
     ) {
-
     }
 
     #[Route('/glass/stock/{stockId}', name: 'app_stock_glass', methods: ['GET'])]
@@ -44,9 +45,23 @@ class GlassController extends AbstractController
     #[Route('/glass/stock/{stockId}/application', name: 'app_stock_glass_create_application', methods: ['POST'])]
     public function createApplication(int $stockId, Request $request): Response
     {
+        // Используем сервис логирования
+        $this->logger->debug('Received create application request', [
+            'stockId' => $stockId,
+            'request_data' => $request->request->all()
+        ]);
+
         $stock = $this->stockRepository->find($stockId);
         if (!$stock) {
             return new Response("Stock not found", Response::HTTP_NOT_FOUND);
+        }
+
+        // Проверяем все необходимые параметры
+        $requiredParams = ['user_id', 'quantity', 'price', 'action', 'portfolio_id'];
+        foreach ($requiredParams as $param) {
+            if (!$request->request->has($param)) {
+                return new Response("Missing required parameter: $param", Response::HTTP_BAD_REQUEST);
+            }
         }
 
         $userId = $request->request->get('user_id');
@@ -63,8 +78,16 @@ class GlassController extends AbstractController
             return new Response("User not found", Response::HTTP_NOT_FOUND);
         }
 
-        // Проверяем достаточно средств/акций перед созданием заявки
-        $portfolio = $user->getPortfolios()->first();
+        // Изменяем получение портфеля
+        $portfolioId = $request->request->get('portfolio_id');
+        $portfolio = null;
+        foreach ($user->getPortfolios() as $p) {
+            if ($p->getId() == $portfolioId) {
+                $portfolio = $p;
+                break;
+            }
+        }
+
         if (!$portfolio) {
             $this->addFlash('error', 'Portfolio not found');
             return $this->redirectToRoute('app_profile');
@@ -101,7 +124,7 @@ class GlassController extends AbstractController
                     $quantity,
                     $available
                 ));
-                return $this->redirectToRoute('app_profile');
+                return $this->redirectToRoute('/glass/stock/{stockId}');
             }
         }
 

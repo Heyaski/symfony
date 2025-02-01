@@ -71,7 +71,9 @@
     </div>
     
     <div class="actions">
+    {% if is_granted('ROLE_ADMIN') %}
         <a href="{{ path('app_stock_show', {'id': stock.id}) }}" class="btn btn-secondary">Вернуться к информации о бумаге</a>
+    {% endif %}
         <a href="{{ path('app_profile') }}" class="btn btn-primary">Создать заявку</a>
     </div>
 </div>

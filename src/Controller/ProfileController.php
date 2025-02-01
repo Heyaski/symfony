@@ -18,14 +18,33 @@ class ProfileController extends AbstractController
     public function index(UserRepository $userRepository, StockRepository $stockRepository): Response
     {
         $user = $this->getUser();
-        $users = $userRepository->findAll();
         $stocks = $stockRepository->findAll();
+
+        // Подготавливаем данные портфелей для JavaScript
+        $portfoliosData = [];
+        foreach ($user->getPortfolios() as $portfolio) {
+            $depositariesData = [];
+            foreach ($portfolio->getDepositaries() as $depositary) {
+                $depositariesData[] = [
+                    'stock' => [
+                        'id' => $depositary->getStock()->getId(),
+                        'name' => $depositary->getStock()->getName()
+                    ],
+                    'quantity' => $depositary->getQuantity()
+                ];
+            }
+
+            $portfoliosData[] = [
+                'id' => $portfolio->getId(),
+                'balance' => $portfolio->getBalance(),
+                'depositaries' => $depositariesData
+            ];
+        }
 
         return $this->render('profile/index.html.twig', [
             'user' => $user,
-            'users' => $users,
+            'portfoliosData' => $portfoliosData, // Передаем подготовленные данные
             'stocks' => $stocks,
-            'stock' => $stocks[0] // Добавьте переменную stock
         ]);
     }
 
