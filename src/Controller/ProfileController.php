@@ -20,6 +20,12 @@ class ProfileController extends AbstractController
         $user = $this->getUser();
         $stocks = $stockRepository->findAll();
 
+        // Получаем список всех пользователей только для админа
+        $users = [];
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            $users = $userRepository->findAll();
+        }
+
         // Подготавливаем данные портфелей для JavaScript
         $portfoliosData = [];
         foreach ($user->getPortfolios() as $portfolio) {
@@ -45,6 +51,7 @@ class ProfileController extends AbstractController
             'user' => $user,
             'portfoliosData' => $portfoliosData, // Передаем подготовленные данные
             'stocks' => $stocks,
+            'users' => $users, // Добавляем список пользователей
         ]);
     }
 

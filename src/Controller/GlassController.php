@@ -124,7 +124,7 @@ class GlassController extends AbstractController
                     $quantity,
                     $available
                 ));
-                return $this->redirectToRoute('/glass/stock/{stockId}');
+                return $this->redirectToRoute('app_profile');
             }
         }
 
@@ -181,14 +181,28 @@ class GlassController extends AbstractController
             );
         }
 
+        $application->setQuantity((int) $quantity);
+        $application->setPrice((float) $price);
+
         try {
-            $application->setQuantity((int) $quantity);
-            $application->setPrice((float) $price);
-            $this->applicationRepository->saveApplication($application);
+            $appropriateApplication = $this->dealService->findAppropriateApplication($application);
+
+            if ($appropriateApplication) {
+                try {
+                    $this->dealService->executeDeal($application, $appropriateApplication);
+                    $this->addFlash('success', 'Сделка успешно выполнена');
+                } catch (\Exception $e) {
+                    $this->addFlash('error', $e->getMessage());
+                }
+            } else {
+                $this->applicationRepository->saveApplication($application);
+                $this->addFlash('success', 'Заявка успешно создана');
+            }
 
             return $this->redirectToRoute('app_profile');
         } catch (\Exception $e) {
-            return new Response($e->getMessage(), Response::HTTP_BAD_REQUEST);
+            $this->addFlash('error', $e->getMessage());
+            return $this->redirectToRoute('app_profile');
         }
     }
 
