@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello GlassController!{% endblock %}
+
+{% block body %}
+<style>
+.applications {
+    border: 1px solid black;
+    padding: 10px;
+}
+
+.applications_buy {
+    background-color: green;
+}
+
+.applications_sell {
+    background-color: red;
+}
+
+.applications div {
+    display: flex;
+    justify-content: space-between;
+    width: 50%;
+}
+
+.applications p {
+    margin: 0;
+    display: block;
+    color: white;
+}
+
+
+</style>
+<div>
+    <h1>
+        Stock glass {{ stock.name}}
+    </h1>
+    <h2>
+        BUY:
+    </h2>
+    <div>
+        {% for application in stock.getApplications() %}
+            {% if application.action == constant('App\\Enums\\ActionEnum::BUY') %}
+                <div class="applications applications_buy">
+                    <div>
+                        <p><strong>quantity: </strong> {{ application.quantity }}</p> 
+                        <p><strong>price: </strong>{{ application.price }}</p>
+                        <p><strong>total: </strong>{{ application.total }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <h2>
+        SELL:
+    </h2>
+    <div>
+        {% for application in stock.getApplications() %}
+            {% if application.action == constant('App\\Enums\\ActionEnum::SELL') %}
+                <div class="applications applications_sell">
+                    <div>
+                        <p><strong>quantity: </strong> {{ application.quantity }}</p> 
+                        <p><strong>price: </strong>{{ application.price }}</p>
+                        <p><strong>total: </strong>{{ application.total }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -94,4 +94,14 @@ class Application
         $this->action = $action;
         return $this;
     }
+
+    public function getTotal(): float
+    {
+        return $this->price * $this->quantity;
+    }
+
+    public function __toString(): string
+    {
+        return $this->action->value;
+    }
 }

@@ -36,6 +36,7 @@ security:
   access_control:
     - { path: ^/stock, roles: ROLE_ADMIN }
     - { path: ^/profile, roles: ROLE_USER }
+    - { path: ^/grant_admin_role, roles: ROLE_SUPER_ADMIN }
 
 when@test:
   security:

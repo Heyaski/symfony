@@ -25,7 +25,7 @@ class Portfolio
     /**
      * @var Collection<int, Depositary>
      */
-    #[ORM\OneToMany(targetEntity: Depositary::class, mappedBy: 'portfolio')]
+    #[ORM\OneToMany(targetEntity: Depositary::class, mappedBy: 'portfolio', cascade: ['persist', 'remove'])]
     private Collection $depositaries;
 
     public function __construct()
@@ -78,6 +78,52 @@ class Portfolio
         }
 
         return $this;
+    }
+
+    public function addBalance(float $sum): static
+    {
+        assert($sum > 0);
+        $this->balance += $sum;
+
+        return $this;
+    }
+
+    public function subBalance(float $sum): static
+    {
+        $this->balance -= $sum;
+
+        return $this;
+    }
+
+    public function addStock(Stock $stock, int $quantity): void
+    {
+        foreach ($this->depositaries as $depositary) {
+            if ($depositary->getStock() === $stock) {
+                $depositary->setQuantity($depositary->getQuantity() + $quantity);
+                return;
+            }
+        }
+
+        $depositary = new Depositary();
+        $depositary->setStock($stock);
+        $depositary->setQuantity($quantity);
+        $depositary->setPortfolio($this);
+        $this->depositaries->add($depositary);
+    }
+
+    public function removeStock(Stock $stock, int $quantity): void
+    {
+        foreach ($this->depositaries as $depositary) {
+            if ($depositary->getStock() === $stock) {
+                $newQuantity = $depositary->getQuantity() - $quantity;
+                if ($newQuantity <= 0) {
+                    $this->depositaries->removeElement($depositary);
+                } else {
+                    $depositary->setQuantity($newQuantity);
+                }
+                return;
+            }
+        }
     }
 
     // public function removeDepositary(Depositary $depositary): static

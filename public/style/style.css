@@ -1,13 +1,17 @@
 /* Общий фон */
 body {
 	background: linear-gradient(to bottom, #7f59cf, #4a3da8);
+	min-height: 100vh;
+	margin: 0;
+	font-family: Arial, sans-serif;
+}
+
+.container {
 	display: flex;
+	height: 100vh;
 	justify-content: center;
 	align-items: center;
-	height: 100vh;
-	margin: 0;
 	color: #fff;
-	font-family: Arial, sans-serif;
 }
 
 /* Контейнер для формы */
@@ -98,4 +102,157 @@ body {
 
 .register-link a:hover {
 	text-decoration: underline;
+}
+
+/* Стили для страницы профиля */
+.profile-container {
+	background: rgba(255, 255, 255, 0.1);
+	padding: 20px;
+	border-radius: 12px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+	color: #fff;
+	max-width: 800px;
+	margin: 20px auto;
+}
+
+.profile-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.profile-title {
+	font-size: 28px;
+	margin-bottom: 20px;
+}
+
+.logout-button {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 8px;
+	background-color: #fff;
+	color: #4a3da8;
+	font-size: 16px;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.logout-button:hover {
+	background-color: #f0f0f0;
+}
+
+.profile-subtitle {
+	font-size: 22px;
+	margin-bottom: 15px;
+}
+
+.portfolio {
+	margin-bottom: 15px;
+	padding: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.portfolio-id,
+.portfolio-balance,
+.portfolio-stocks {
+	display: block;
+	margin-bottom: 5px;
+}
+
+.stocks-list {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+}
+
+.stocks-list li {
+	margin-left: 20px;
+}
+
+.profile-total {
+	font-size: 20px;
+	margin-top: 20px;
+}
+
+.create-portfolio-form,
+.delete-portfolio-form,
+.grant-role-form {
+	margin-top: 20px;
+}
+
+.create-portfolio-button,
+.delete-portfolio-button,
+.grant-role-button {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 8px;
+	background-color: #fff;
+	color: #4a3da8;
+	font-size: 16px;
+	cursor: pointer;
+}
+
+.create-portfolio-button:hover,
+.delete-portfolio-button:hover,
+.grant-role-button:hover {
+	background-color: #f0f0f0;
+}
+
+.portfolio-select,
+.user-select {
+	padding: 10px;
+	margin-right: 10px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+}
+
+.error-message {
+	color: red;
+	font-size: 14px;
+	margin-top: 10px;
+}
+
+/* Стили для форм создания, редактирования и удаления заявок */
+.application-form-container {
+	background: rgba(255, 255, 255, 0.1);
+	padding: 40px;
+	border-radius: 12px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+	text-align: center;
+	max-width: 500px;
+	margin: 20px auto;
+}
+
+.form-title {
+	font-size: 24px;
+	margin-bottom: 20px;
+}
+
+.form-input {
+	width: 100%;
+	padding: 12px;
+	margin: 10px 0;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+	font-size: 16px;
+}
+
+.form-button {
+	padding: 12px 20px;
+	border: none;
+	border-radius: 8px;
+	background-color: #fff;
+	color: #4a3da8;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+.form-button:hover {
+	background-color: #f0f0f0;
 }

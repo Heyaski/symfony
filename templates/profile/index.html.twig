@@ -3,20 +3,430 @@
 {% block title %}User Profile{% endblock %}
 
 {% block body %}
-<div>
-    {% set total = 0 %}
-    <h1>User name: {{ user.username }}</h1>
-    <h1>All portfolios: </h1>
-    {% for portfolio in user.portfolios %}
-        <span>Portfolio {{ portfolio.id }} has {{ portfolio.balance }} money and has stocks:</span>
-        <br>
-        {% for depositary in portfolio.depositaries %}
-            {% set total = total + depositary.quantity %}
-            Stock name: {{ depositary.stock.name }}, quantity: {{ depositary.quantity }}
-            <br>
+<div class="profile-container">
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }}">
+                {{ message }}
+            </div>
         {% endfor %}
-        <br>
     {% endfor %}
-    <h1> Total quantity: {{ total }}</h1>
+    <div class="profile-header">
+        <h1 class="profile-title">Имя пользователя: {{ user.username }}</h1>
+        <a href="{{ path('app_logout') }}" class="logout-button">Выйти</a>
+    </div>
+    <h2 class="profile-subtitle">Количество портфелей: {{ user.portfolios|length }}</h2>
+    
+    {% set totalBalance = 0 %}
+    {% for portfolio in user.portfolios %}
+        <div class="portfolio">
+            <span class="portfolio-id">Портфель ID: {{ portfolio.id }}</span>
+            <span class="portfolio-balance">Баланс: {{ portfolio.balance }}</span>
+            <span class="portfolio-stocks">Ценные бумаги:</span>
+            <ul class="stocks-list">
+                {% for depositary in portfolio.depositaries %}
+                    <li>{{ depositary.stock.name }}, {{ depositary.quantity }} шт.</li>
+                {% endfor %}
+            </ul>
+            {% set totalBalance = totalBalance + portfolio.balance %}
+        </div>
+    {% endfor %}
+    <h2 class="profile-total">Итоговый баланс всех портфелей: {{ totalBalance }}</h2>
+    
+    {% if user.portfolios|length < 5 %}
+        <form method="post" action="{{ path('create_portfolio') }}" class="create-portfolio-form">
+            <button type="submit" class="create-portfolio-button">Создать новый портфель</button>
+        </form>
+    {% else %}
+        <p class="error-message">Вы не можете создать больше 5 портфелей.</p>
+    {% endif %}
+    
+    <form method="post" action="{{ path('delete_portfolio') }}" class="delete-portfolio-form">
+        <label for="portfolio-select">Выберите портфель для удаления:</label>
+        <select id="portfolio-select" name="portfolio_id" class="portfolio-select">
+            {% for portfolio in user.portfolios %}
+                <option value="{{ portfolio.id }}">Портфель ID: {{ portfolio.id }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="delete-portfolio-button">Удалить портфель</button>
+    </form>
+    
+    {% if is_granted('ROLE_SUPER_ADMIN') %}
+        <form method="post" action="{{ path('grant_admin_role') }}" class="grant-role-form">
+            <label for="user-select">Выберите пользователя:</label>
+            <select id="user-select" name="user_id" class="user-select">
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="grant-role-button">Выдать права Администратора</button>
+        </form>
+    {% endif %}
+
+    <div class="applications-section">
+        <h2 class="section-title">Управление заявками</h2>
+        
+        <div class="existing-applications">
+            <h3>Ваши активные заявки:</h3>
+            <div class="applications-grid">
+                {% for application in user.applications %}
+                    <div class="application-card {{ application.action == constant('App\\Enums\\ActionEnum::BUY') ? 'buy' : 'sell' }}">
+                        <div class="application-header">
+                            <span class="application-id">Заявка #{{ application.id }}</span>
+                            <span class="application-type">{{ application.action == constant('App\\Enums\\ActionEnum::BUY') ? 'Покупка' : 'Продажа' }}</span>
+                        </div>
+                        <div class="application-details">
+                            <p><strong>Акция:</strong> {{ application.stock.name }}</p>
+                            <p><strong>Количество:</strong> {{ application.quantity }} шт.</p>
+                            <p><strong>Цена:</strong> {{ application.price }} ₽</p>
+                            <p><strong>Общая сумма:</strong> {{ application.total }} ₽</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="no-applications">У вас пока нет активных заявок</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="application-forms">
+            <div class="form-card">
+                <h3>Создать заявку</h3>
+                <form method="post" id="createForm" onsubmit="createApplication(event)" class="application-form">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <div class="form-group">
+                        <label for="portfolio-select-create">Портфель:</label>
+                        <select id="portfolio-select-create" name="portfolio_id" required class="form-select">
+                            {% for portfolio in user.portfolios %}
+                                <option value="{{ portfolio.id }}">Портфель #{{ portfolio.id }} ({{ portfolio.balance }} ₽)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <label for="stock-select">Выберите акцию:</label>
+                    <select id="stock-select" name="stock_id" onchange="updateCreateFormAction(this.value)">
+                        {% for stock in stocks %}
+                            <option value="{{ stock.id }}">{{ stock.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <label for="quantity">Количество:</label>
+                    <input type="number" id="quantity" name="quantity" required>
+                    <label for="price">Цена:</label>
+                    <input type="number" id="price" name="price" required>
+                    <label for="action">Действие:</label>
+                    <select id="action" name="action">
+                        <option value="buy">Купить</option>
+                        <option value="sell">Продать</option>
+                    </select>
+                    <button type="submit">Создать заявку</button>
+                </form>
+            </div>
+
+            <div class="form-card">
+                <h3>Редактировать заявку</h3>
+                <form id="updateForm" onsubmit="updateApplication(event)" class="application-form">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <label for="application-select">Выберите заявку:</label>
+                    <select id="application-select" name="application_id" onchange="updateFormFields(this.value)">
+                        {% for application in user.applications %}
+                            <option value="{{ application.id }}" 
+                                    data-stock="{{ application.stock.id }}"
+                                    data-quantity="{{ application.quantity }}"
+                                    data-price="{{ application.price }}">
+                                Заявка ID: {{ application.id }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <label for="quantity">Количество:</label>
+                    <input type="number" id="quantity" name="quantity" required value="0">
+                    <label for="price">Цена:</label>
+                    <input type="number" id="price" name="price" required value="0">
+                    <button type="submit">Редактировать заявку</button>
+                </form>
+            </div>
+
+            <div class="form-card">
+                <h3>Удалить заявку</h3>
+                <form id="deleteForm" onsubmit="deleteApplication(event)" class="application-form">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <label for="application-delete-select">Выберите заявку:</label>
+                    <select id="application-delete-select" name="application_id" onchange="deleteFormAction(this.value)">
+                        {% for application in user.applications %}
+                            <option value="{{ application.id }}" 
+                                    data-stock="{{ application.stock.id }}">
+                                Заявка ID: {{ application.id }} ({{ application.stock.name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Удалить заявку</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .applications-section {
+        margin: 2rem 0;
+        padding: 1rem;
+    }
+
+    .section-title {
+        color: #2c3e50;
+        margin-bottom: 2rem;
+    }
+
+    .applications-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .application-card {
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .application-card.buy {
+        background-color:rgb(80, 199, 92);
+        border: 1px solid #81c784;
+    }
+
+    .application-card.sell {
+        background-color:rgb(248, 76, 102);
+        border: 1px solid #e57373;
+    }
+
+    .application-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .application-type {
+        font-weight: bold;
+    }
+
+    .application-details p {
+        margin: 0.5rem 0;
+    }
+
+    .form-card {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .application-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-select,
+    input[type="number"] {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    button[type="submit"] {
+        background-color: #3498db;
+        color: white;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+    }
+
+    button[type="submit"]:hover {
+        background-color: #2980b9;
+    }
+
+    .no-applications {
+        grid-column: 1 / -1;
+        text-align: center;
+        color: #666;
+        padding: 2rem;
+    }
+
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    .alert-error {
+        background-color: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef5350;
+    }
+
+    .alert-success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #66bb6a;
+    }
+    </style>
+
+    <script>
+    function updateFormFields(applicationId) {
+        const select = document.getElementById('application-select');
+        const option = select.options[select.selectedIndex];
+        const stockId = option.getAttribute('data-stock');
+        const quantity = option.getAttribute('data-quantity');
+        const price = option.getAttribute('data-price');
+        
+        document.getElementById('quantity').value = quantity;
+        document.getElementById('price').value = price;
+        
+        const form = document.getElementById('updateForm');
+        form.action = "{{ path('app_stock_glass_update_application', {'stockId': 'STOCK_ID', 'applicationId': 'APP_ID'}) }}"
+            .replace('STOCK_ID', stockId)
+            .replace('APP_ID', applicationId);
+    }
+
+    async function updateApplication(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const url = form.getAttribute('action');
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST', // Временно изменим на POST
+                headers: {
+                    'X-HTTP-Method-Override': 'PATCH',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.text();
+                console.error('Error:', error);
+                alert(error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message);
+        }
+    }
+
+    async function deleteApplication(event) {
+        event.preventDefault();
+        const form = event.target;
+        const url = form.getAttribute('action');
+        
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    function deleteFormAction(applicationId) {
+        if (!applicationId) return;
+        
+        const select = document.getElementById('application-delete-select');
+        const option = select.options[select.selectedIndex];
+        const stockId = option.getAttribute('data-stock');
+        
+        if (!stockId) return;
+        
+        const form = document.getElementById('deleteForm');
+        form.action = "{{ path('app_stock_glass_delete_application', {'stockId': 'STOCK_ID', 'applicationId': 'APP_ID'}) }}"
+            .replace('STOCK_ID', stockId)
+            .replace('APP_ID', applicationId);
+    }
+
+    function updateCreateFormAction(stockId) {
+        if (!stockId) return;
+        const form = document.getElementById('createForm');
+        form.action = "{{ path('app_stock_glass_create_application', {'stockId': 'STOCK_ID'}) }}"
+            .replace('STOCK_ID', stockId);
+    }
+
+    async function createApplication(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const action = formData.get('action');
+        const quantity = parseInt(formData.get('quantity'));
+        const price = parseFloat(formData.get('price'));
+        const portfolioId = formData.get('portfolio_id');
+        
+        // Находим выбранный портфель
+        const portfolio = {{ user.portfolios|json_encode|raw }}.find(p => p.id == portfolioId);
+        
+        // Проверяем средства для покупки
+        if (action === 'buy') {
+            const totalCost = quantity * price;
+            if (portfolio.balance < totalCost) {
+                alert(`Недостаточно средств. Требуется: ${totalCost}, доступно: ${portfolio.balance}`);
+                return;
+            }
+        }
+        
+        // Проверяем наличие акций для продажи
+        if (action === 'sell') {
+            const stockId = document.getElementById('stock-select').value;
+            const depositary = portfolio.depositaries.find(d => d.stock.id == stockId);
+            if (!depositary || depositary.quantity < quantity) {
+                const available = depositary ? depositary.quantity : 0;
+                alert(`Недостаточно акций. Требуется: ${quantity}, доступно: ${available}`);
+                return;
+            }
+        }
+        
+        const url = form.getAttribute('action');
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const error = await response.text();
+                alert(error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message);
+        }
+    }
+
+    // Обновляем инициализацию при загрузке страницы
+    window.onload = function() {
+        const stockSelect = document.getElementById('stock-select');
+        const updateSelect = document.getElementById('application-select');
+        const deleteSelect = document.getElementById('application-delete-select');
+        
+        if(stockSelect.value) updateCreateFormAction(stockSelect.value);
+        if(updateSelect.value) updateFormFields(updateSelect.value);
+        if(deleteSelect.value) deleteFormAction(deleteSelect.value);
+    }
+    </script>
 </div>
 {% endblock %}
