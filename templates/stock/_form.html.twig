@@ -1,4 +1,53 @@
-{{ form_start(form) }}
+{{ form_start(form, {'attr': {'class': 'stock-form'}}) }}
     {{ form_widget(form) }}
-    <button class="btn">{{ button_label|default('Save') }}</button>
+    <button class="btn btn-success">{{ button_label|default('Сохранить') }}</button>
 {{ form_end(form) }}
+
+<style>
+.stock-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.stock-form div {
+    margin-bottom: 1rem;
+}
+
+.stock-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #fff;
+}
+
+.stock-form input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.stock-form input[type="text"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.btn-success {
+    background: #2ecc71;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-success:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+</style>

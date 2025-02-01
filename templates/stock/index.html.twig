@@ -1,37 +1,139 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Stock index{% endblock %}
+{% block title %}Ценные бумаги{% endblock %}
 
 {% block body %}
-    <h1>Stock index</h1>
+<div class="stock-container">
+    <h1>Управление ценными бумагами</h1>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Name</th>
-                <th>Ticker</th>
-                <th>actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for stock in stocks %}
-            <tr>
-                <td>{{ stock.id }}</td>
-                <td>{{ stock.name }}</td>
-                <td>{{ stock.ticker }}</td>
-                <td>
-                    <a href="{{ path('app_stock_show', {'id': stock.id}) }}">show</a>
-                    <a href="{{ path('app_stock_edit', {'id': stock.id}) }}">edit</a>
-                </td>
-            </tr>
-        {% else %}
-            <tr>
-                <td colspan="4">no records found</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <div class="stock-table-wrapper">
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Тикер</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for stock in stocks %}
+                <tr>
+                    <td>{{ stock.id }}</td>
+                    <td>{{ stock.name }}</td>
+                    <td>{{ stock.ticker }}</td>
+                    <td class="actions">
+                        <a href="{{ path('app_stock_glass', {'stockId': stock.id}) }}" class="btn btn-primary">Биржевой стакан</a>
+                        <a href="{{ path('app_stock_show', {'id': stock.id}) }}" class="btn btn-info">Просмотр</a>
+                        <a href="{{ path('app_stock_edit', {'id': stock.id}) }}" class="btn btn-warning">Изменить</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="4" class="no-records">Ценные бумаги не найдены</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-    <a href="{{ path('app_stock_new') }}">Create new</a>
+    <a href="{{ path('app_stock_new') }}" class="btn btn-primary create-btn">Добавить ценную бумагу</a>
+</div>
+
+<style>
+.stock-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.stock-container h1 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.stock-table-wrapper {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+}
+
+.stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #fff;
+}
+
+.stock-table th,
+.stock-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stock-table th {
+    background: rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+}
+
+.stock-table tr:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-info {
+    background: #3498db;
+    color: white;
+}
+
+.btn-warning {
+    background: #f1c40f;
+    color: #2c3e50;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.create-btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+.no-records {
+    text-align: center;
+    color: #bdc3c7;
+    font-style: italic;
+}
+</style>
 {% endblock %}

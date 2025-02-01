@@ -6,12 +6,103 @@
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
         {% block stylesheets %}
         <link rel="stylesheet" href="{{ asset('style/style.css') }}" />
-        {% endblock %}
-
-        {% block javascripts %}
+        
         {% endblock %}
     </head>
     <body>
+        <nav class="main-nav">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <a href="{{ path('app_profile') }}">Trading Platform</a>
+                </div>
+                {% if app.user %}
+                    <ul class="nav-links">
+                        <li><a href="{{ path('app_profile') }}" class="nav-link">Мой профиль</a></li>
+                        <li><a href="{{ path('app_stock_index') }}" class="nav-link">Ценные бумаги</a></li>
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <li><a href="{{ path('app_register') }}" class="nav-link">Регистрация пользователей</a></li>
+                        {% endif %}
+                        <li><a href="{{ path('app_logout') }}" class="nav-link logout">Выйти</a></li>
+                    </ul>
+                {% endif %}
+            </div>
+        </nav>
+
         {% block body %}{% endblock %}
+        {% block javascripts %}{% endblock %}
+
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                min-height: 100vh;
+                background: linear-gradient(to bottom, #7f59cf, #4a3da8);
+                font-family: Arial, sans-serif;
+            }
+
+            .main-nav {
+                background: rgba(0, 0, 0, 0.2);
+                padding: 1rem 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 2rem;
+            }
+
+            .nav-container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 1rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .nav-brand a {
+                color: #fff;
+                font-size: 1.5rem;
+                text-decoration: none;
+                font-weight: bold;
+            }
+
+            .nav-links {
+                display: flex;
+                gap: 2rem;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            .nav-link {
+                color: #fff;
+                text-decoration: none;
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                transition: all 0.3s ease;
+            }
+
+            .nav-link:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-link.logout {
+                background: rgba(231, 76, 60, 0.8);
+            }
+
+            .nav-link.logout:hover {
+                background: rgba(231, 76, 60, 1);
+            }
+
+            @media (max-width: 768px) {
+                .nav-container {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+
+                .nav-links {
+                    flex-direction: column;
+                    gap: 0.5rem;
+                    text-align: center;
+                }
+            }
+        </style>
     </body>
 </html>
